@@ -1,0 +1,97 @@
+version: '3.7'
+services:
+  postgresql:           # docker exec -it moodle_postgresql psql -U bn_moodle -d bitnami_moodle
+    image: postgres:14-alpine
+    user: $UID:$GID
+    container_name: moodle_postgresql
+    environment:
+      POSTGRES_DB: bitnami_moodle
+      POSTGRES_USER: bn_moodle
+      POSTGRES_PASSWORD: example
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    volumes:
+      - ./PG:/var/lib/postgresql/data:rw
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bn_moodle -d bitnami_moodle"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  moodle:
+    image: docker.io/bitnami/moodle:4
+    user: $UID:$GID
+    # user: daemon:root
+    container_name: moodle_moodle
+    ports:
+      - '80:8080'
+      - '443:8443'
+    environment:
+      # ### Basic Database Configuration
+      - MOODLE_DATABASE_TYPE=pgsql          # Valid values: mariadb, mysqli, pgsql, auroramysql. Default: mariadb
+      - MOODLE_DATABASE_HOST=postgresql
+      - MOODLE_DATABASE_PORT_NUMBER=5432
+      - MOODLE_DATABASE_USER=bn_moodle
+      - MOODLE_DATABASE_PASSWORD=example
+      - MOODLE_DATABASE_NAME=bitnami_moodle
+
+
+      # ### Advanced Database Configuration
+      # - POSTGRESQL_CLIENT_DATABASE_HOST=                # Hostname for the PostgreSQL server. Default: postgresql
+      # - POSTGRESQL_CLIENT_DATABASE_PORT_NUMBER=         # Port used by the PostgreSQL server. Default: 5432
+      - POSTGRESQL_CLIENT_POSTGRES_USER=bn_moodle       # Database admin user. Default: root
+      # - POSTGRESQL_CLIENT_POSTGRES_PASSWORD=            # Database password for the database admin user. No defaults.
+      # - POSTGRESQL_CLIENT_CREATE_DATABASE_NAMES=        # List of new databases to be created by the postgresql-client module. No defaults.
+      # - POSTGRESQL_CLIENT_CREATE_DATABASE_USER=         # New database user to be created by the postgresql-client module. No defaults.
+      # - POSTGRESQL_CLIENT_CREATE_DATABASE_PASSWORD=     # Database password for the POSTGRESQL_CLIENT_CREATE_DATABASE_USER user. No defaults.
+      # - POSTGRESQL_CLIENT_CREATE_DATABASE_EXTENSIONS=   # PostgreSQL extensions to enable in the specified database during the first initialization. No defaults.
+      # - POSTGRESQL_CLIENT_EXECUTE_SQL=                  # SQL code to execute in the PostgreSQL server. No defaults.
+
+
+      # ### Application Configuration
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+      # - MOODLE_USERNAME=            # Moodle application username. Default: user
+      # - MOODLE_SITE_NAME=           # Moodle site name. Default: New Site
+      # - MOODLE_EMAIL=               # Moodle application email. Default: user@example.com
+      # - MOODLE_SKIP_BOOTSTRAP=      # Do not initialize the Moodle database for a new deployment. This is necessary in case you use a database that already has Moodle data. Default: no
+      # - MOODLE_HOST=                # Allows you to configure Moodle's wwwroot feature. Ex: example.com. By default it is a PHP superglobal variable. Default: $_SERVER['HTTP_HOST']
+      # - MOODLE_REVERSEPROXY=        # Allows you to activate the reverseproxy feature of Moodle. Default: no
+      # - MOODLE_SSLPROXY=            # Allows you to activate the sslproxy feature of Moodle. Default: no      
+      # # ### This would be an instance ready to be put behind the NGINX load balancer.
+      # # - MOODLE_HOST=example.com
+      # # - MOODLE_REVERSEPROXY=true
+      # # - MOODLE_SSLPROXY=true
+
+
+      # ### SMTP Configuration
+      # ### To configure Moodle™ to send email using SMTP you can set the following environment variables:
+      # - MOODLE_SMTP_HOST=                 # SMTP host. Ex, smtp.gmail.com
+      # - MOODLE_SMTP_PORT=                 # SMTP port. Ex, 587
+      # - MOODLE_SMTP_USER=                 # SMTP account user. Ex, your_email@gmail.com
+      # - MOODLE_SMTP_PASSWORD=             # SMTP account password. Ex, your_password
+      # - MOODLE_SMTP_PROTOCOL=             # SMTP protocol. Ex, tls
+
+
+      # ### PHP configuration
+      # - PHP_ENABLE_OPCACHE=         # Enable OPcache for PHP scripts. No default.
+      # - PHP_EXPOSE_PHP=             # Enables HTTP header with PHP version. No default.
+      # - PHP_MAX_EXECUTION_TIME=     # Maximum execution time for PHP scripts. No default.
+      # - PHP_MAX_INPUT_TIME=         # Maximum input time for PHP scripts. No default.
+      # - PHP_MAX_INPUT_VARS=         # Maximum amount of input variables for PHP scripts. No default.
+      # - PHP_MEMORY_LIMIT=           # Memory limit for PHP scripts. Default=           256M
+      # - PHP_POST_MAX_SIZE=          # Maximum size for PHP POST requests. No default.
+      # - PHP_UPLOAD_MAX_FILESIZE=    # Maximum file size for PHP uploads. No default.
+
+    volumes:
+      - ./moodle_data:/bitnami/moodle
+      - ./moodledata_data:/bitnami/moodledata
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+    # TODO: Add nginx & certbot containers.
